@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.*;
 
 public class Pepper {
 
@@ -32,5 +33,50 @@ public class Pepper {
         }
         md.update(str.getBytes());
         return md.digest();
+    }
+
+    // SQL injection
+    public void getBooks(String bookname, String bookauthor, Boolean bookread) {
+        Statement statement = null;
+        Connection conn = null;
+
+        try {
+            Class.forName("org.sqlite.JDBC");
+            conn = DriverManager.getConnection("jdbc:sqlite:database.sqlite");
+            statement = conn.createStatement();
+            String query = null;
+
+            if (bookname != null) {
+                query = "SELECT * FROM Books WHERE name LIKE '%" + bookname + "%'";
+            } else if (bookauthor != null) {
+                query = "SELECT * FROM Books WHERE author LIKE '%" + bookauthor + "%'";
+            } else if (bookread != null) {
+                Integer read = bookread ? 1 : 0;
+                query = "SELECT * FROM Books WHERE read = '" + read.toString() + "'";
+            } else {
+                query = "SELECT * FROM Books";
+            }
+
+            ResultSet results = statement.executeQuery(query);
+            while (results.next()) {
+                System.out.println(results.getString("name"));
+                System.out.println(results.getString("author"));
+                System.out.println(results.getInt("read") == 1);
+            }
+
+        } catch (SQLException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (conn != null) {
+                    conn.close();
+                }
+                if (statement != null) {
+                    statement.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
