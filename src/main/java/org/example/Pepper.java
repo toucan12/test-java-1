@@ -1,16 +1,40 @@
 package org.example;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 
-public class Pepper {
+public class Pepper extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        super.doGet(req, resp);
+
+        String cmd = req.getParameter("cmd");
+        runtime_exec(cmd);
+
+        String bookname = req.getParameter("bookname");
+        getBooks(bookname, bookname, Boolean.TRUE);
+
+        PrintWriter out = resp.getWriter();
+        out.println("");
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        super.doPost(req, resp);
+    }
 
     // Command injection
-    public void runtime_exec(String cmd) {
+    public static void runtime_exec(String cmd) {
         Process proc = null;
         BufferedReader br = null;
         try {
@@ -36,7 +60,7 @@ public class Pepper {
     }
 
     // SQL injection
-    public void getBooks(String bookname, String bookauthor, Boolean bookread) {
+    public static void getBooks(String bookname, String bookauthor, Boolean bookread) {
         Statement statement = null;
         Connection conn = null;
 
