@@ -17,15 +17,18 @@ public class Pepper extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         super.doGet(req, resp);
+        String result = "";
 
         String cmd = req.getParameter("cmd");
-        runtime_exec(cmd);
+        result = commandInjection(cmd);
 
-        String bookname = req.getParameter("bookname");
-        getBooks(bookname, bookname, Boolean.TRUE);
+        String id = req.getParameter("id");
+        result = sqlInjection(id);
+
+        byte[] md5 = md5Digest("hello");
 
         PrintWriter out = resp.getWriter();
-        out.println("");
+        out.println(result);
     }
 
     @Override
@@ -34,25 +37,28 @@ public class Pepper extends HttpServlet {
     }
 
     // Command injection
-    public static void runtime_exec(String cmd) {
+    public static String commandInjection(String cmd) {
         Process proc = null;
         BufferedReader br = null;
+        String result = "";
         try {
             proc = Runtime.getRuntime().exec(cmd);
             br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-            System.out.println(br.readLine());
+            result = br.readLine();
         }
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+        return result;
     }
 
     // Insecure hash algorithm
-    public byte[] md5_digest(String str) {
+    public byte[] md5Digest(String str) {
         MessageDigest md = null;
         try {
             md = MessageDigest.getInstance("MD5");
-        } catch (NoSuchAlgorithmException e) {
+        }
+        catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
         md.update(str.getBytes());
@@ -60,47 +66,46 @@ public class Pepper extends HttpServlet {
     }
 
     // SQL injection
-    public static void getBooks(String bookname, String bookauthor, Boolean bookread) {
-        Statement statement = null;
+    public static String sqlInjection(String id) {
         Connection conn = null;
-
+        Statement stmt = null;
+        ResultSet rs = null;
+        String result = "";
         try {
             Class.forName("org.sqlite.JDBC");
             conn = DriverManager.getConnection("jdbc:sqlite:database.sqlite");
-            statement = conn.createStatement();
+            stmt = conn.createStatement();
             String query = null;
-
-            if (bookname != null) {
-                query = "SELECT * FROM Books WHERE name LIKE '%" + bookname + "%'";
-            } else if (bookauthor != null) {
-                query = "SELECT * FROM Books WHERE author LIKE '%" + bookauthor + "%'";
-            } else if (bookread != null) {
-                Integer read = bookread ? 1 : 0;
-                query = "SELECT * FROM Books WHERE read = '" + read.toString() + "'";
-            } else {
-                query = "SELECT * FROM Books";
+            if (id != null) {
+                query = "SELECT * FROM Member WHERE id LIKE '%" + id + "%'";
             }
-
-            ResultSet results = statement.executeQuery(query);
-            while (results.next()) {
-                System.out.println(results.getString("name"));
-                System.out.println(results.getString("author"));
-                System.out.println(results.getInt("read") == 1);
+            else {
+                query = "SELECT * FROM Member";
             }
-
-        } catch (SQLException | ClassNotFoundException e) {
+            rs = stmt.executeQuery(query);
+            if (rs.next()) {
+                result = rs.getString("id");
+            }
+        }
+        catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);
-        } finally {
+        }
+        finally {
             try {
+                if (rs != null) {
+                    rs.close();
+                }
+                if (stmt != null) {
+                    stmt.close();
+                }
                 if (conn != null) {
                     conn.close();
                 }
-                if (statement != null) {
-                    statement.close();
-                }
-            } catch (SQLException e) {
+            }
+            catch (SQLException e) {
                 e.printStackTrace();
             }
         }
+        return result;
     }
 }
